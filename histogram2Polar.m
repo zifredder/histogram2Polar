@@ -1,5 +1,5 @@
 classdef histogram2Polar < matlab.mixin.SetGet
-    %histogram2Polar Bivariate histogram plot from polar coordinates.
+    %histogram2Polar Bivariate histogram plot from polar coordinates / position vectors.
     % Esentially, the coordinates are converted to cartesian coordinates and fed to
     % HISTOGRAM2. A polar-coordinate grid is then drawn in order to mimic a polar plot.
     % The properties and methods of this class are intended to mimic a polar plot like it
@@ -302,16 +302,41 @@ classdef histogram2Polar < matlab.mixin.SetGet
             %% create histogram
             % coordinate transformation
             [x, y] = pol2cart(theta * self.thDirFac, rho);
-
-            edges = -self.RLim(2) : self.BinWidth : self.RLim(2);
-            self.Histogram = histogram2(axH, x, y, edges, edges, ...
-                'DisplayStyle', 'tile', 'ShowEmptyBins', 'off', 'edgecolor', 'none', ...
-                hist2Args{:});
+            
+            % compose histogram edges; this procedure assures that the bins are symmetric
+            % relative to the plot center, i. e., the innermost four bins meet at (0,0)
+            edgesPos = 0 : self.BinWidth : self.RLim(2);
+            edgesNeg = -1 * edgesPos(end:-1:2);
+            edges = [edgesNeg, edgesPos];
+            
+            try
+                self.Histogram = histogram2(axH, x, y, edges, edges, ...
+                    'DisplayStyle', 'tile', 'ShowEmptyBins', 'off', 'edgecolor', 'none', ...
+                    hist2Args{:});
+            catch ME
+                if strcmp(ME.identifier, 'MATLAB:unrecognizedStringChoice')
+                    % handle exception of non-matching parameter name
+                    
+                    validParams = ip.Parameters; % compose parameter names
+                    validParams = cellfun(@(c) ['''',c,''''], validParams, 'UniformOutput', false);
+                    exMsg = sprintf('Unrecognized Name-Value pair input\nValid parameters for %s:\n\n%s\n', ...
+                        '<a href="matlab: matlab.internal.language.introspective.errorDocCallback(''histogram2Polar'')">histogram2Polar</a>', ...
+                        strjoin(validParams, ', '));
+                    
+                    % create exception containing the valid parameters of histogram2Polar,
+                    % add the caught exception as cause and throw it. This exception first
+                    % lists the valid properties and then outputs the histogram2 exception
+                    % message. Neat.
+                    ex = MException('HISTOGRAM2POLAR:unrecognizedParameterName', exMsg);
+                    ex = ex.addCause(ME);
+                    ex.throw;
+                else, ME.rethrow;
+                end
+            end
            
             % if histogram is deleted, the respective instance of this class is deleted as
             % well
             self.Histogram.DeleteFcn = @(~,~) self.delete;
-            self.Histogram.Parent = axH;
             
             %%
             colormap(self.Parent, jet);
@@ -423,7 +448,7 @@ classdef histogram2Polar < matlab.mixin.SetGet
                     lineH = lineH(isvalid(lineH));
                     
                     if tf, z = 0;
-                    else,  z = -0.01; end
+                    else,  z = -0.1; end
                     
                     % adjust Z-coordinate
                     arrayfun(@(h) set(h, 'ZData', repmat(z, size(h.XData))), lineH);
@@ -628,9 +653,9 @@ classdef histogram2Polar < matlab.mixin.SetGet
             
             % if the lines and the histogram have the same Z-coordinates, the lines will
             % be on top of the histogram. To change this, the lines' Z-coordinates are
-            % shifted below zero.
+            % shifted below zero. (No, using UISTACK does not work.)
             if self.DisplayGridOnTop, z = 0;
-            else,                     z = -0.01; end
+            else,                     z = -0.1; end
             
             [circX, circY] = pol2cart(thetaRad, rho);
             h = line(self.Parent, circX, circY, repmat(z, size(circX)), 'Color', self.GridColor);
