@@ -6,19 +6,20 @@ classdef histogram2Polar < matlab.mixin.SetGet
     % is created by POLARAXES and properties with the same name, such as 'ThetaDir', mimic
     % the behavior of a real POLARAXES. Note that this has limitations and might not work
     % flawlessly. Properties may be specified via Name-Value pairs during plot
-    % construction or set post-hoc using dot-notation or set(obj, param, val). HISTOGRAM2
-    % is called with the parameters {'DisplayStyle', 'tile', 'ShowEmptyBins', 'off',
-    % 'EdgeColor', 'none'}, which can be overridden by specifying the respective
-    % Name-Value pairs during plot creation or by accessing the returned object's property
-    % 'Histogram'. Optional Name-Value pairs of this function support those specified
-    % below and all Name-Value pairs as accepted by HISTOGRAM2.
+    % construction or set post-hoc using dot-notation or SET syntax. HISTOGRAM2 is called
+    % with the parameters {'DisplayStyle', 'tile', 'ShowEmptyBins', 'off', 'EdgeColor',
+    % 'none'}, which can be overridden by specifying the respective Name-Value pairs
+    % during plot creation or by accessing the returned object's property 'Histogram'.
+    % Optional Name-Value pairs of this function support those specified below and all
+    % Name-Value pairs as accepted by HISTOGRAM2.
     %
     %
     % Syntax:
     %
     %   histogram2Polar(theta, rho);
-    %   histogram2Polar(theta, rho, binWidth);
-    %   histogram2Polar(theta, rho, binWidth, Name, Value);
+    %   histogram2Polar(theta, rho, BinWidth);
+    %   histogram2Polar(theta, rho, BinWidth, Name, Value);
+    %   histogram2Polar(theta, rho, Name, Value);
     %   histogram2Polar(target, ___);
     %   h = histogram2Polar(___);
     %
@@ -31,12 +32,14 @@ classdef histogram2Polar < matlab.mixin.SetGet
     %   rho         Radial coordinate. THETA and RHO must have the same size or any of
     %               them can be scalar.
     %
-    %   binWidth    Edge length of the square-sized bins in radial units. May be omitted
+    %   BinWidth    Edge length of the square-sized bins in radial units. May be omitted
     %               or specified empty (default == 0.05). Must be specified if Name-Value
     %               pairs are given.
     %
     %   target      Handle to cartesian axes. Alternatively, the target axes can be
-    %               specified as the 'Parent' parameter.
+    %               specified as the 'Parent' parameter. If this syntax is used and the
+    %               'Parent' parameter specified, the axes handle provided via TARGET is
+    %               preferred over the one given as parameter value.
     %
     %
     % Name-Value pairs can be any pairs that are accepted by HISTOGRAM2 and additionally
@@ -92,18 +95,28 @@ classdef histogram2Polar < matlab.mixin.SetGet
     %   	false (default) | true
     %
     %   'Parent' -- Handle to the axes where the histogram is plotted
-    %       current axes (default) | valid handle to cartesian axes
+    %       current axes (default) | valid scalar handle to cartesian axes
+    %       Alternatively, the target axes can be specified as a first input argument; in
+    %       this case, specification of the 'Parent' parameter is ignored.
+    %
+    % All property values can be adjusted after plotting.
     %
     %
     % Output:
     % 	h       Handle to the created HISTOGRAM2POLAR object. Access its properties
-    %           using dot notation or set(obj, param, value).
+    %           using dot notation or SET syntax.
     %
     %
-    % Notable properties beside the input parameters:
+    % Notable properties beside the input parameters (see DOC page for details):
     %
-    % 	'Data' -- Setting this property updates the histogram. Two-column matrix where the
-    %       first column contains angle data and the second column contains radius data.
+    % 	'Data', 'Histogram', 'Colorbar', 'GridEdge', 'RAxisGrid', 'RAxisLabels',
+    % 	'ThetaAxisGrid', 'ThetaAxisLabels'
+    %
+    %   
+    % Methods:
+    %
+    %   fewerbins, morebins
+    %
     %
     %
     % Example:
@@ -114,55 +127,90 @@ classdef histogram2Polar < matlab.mixin.SetGet
     % figure, histogram2Polar(theta, rho, 0.1, 'ThetaTicks', 0:45:360, 'thetaZeroLocation', 'right', 'edgeColor', 'k', 'Normalization', 'pdf');
     %
     %
+    %
     % Notes:
-    % 	- The radius-axis lower limit can be changed, but the origin will always be at
-    %       (0,0). Implementing an actual limits-change would be rather difficult (I
-    %       suppose) because the radius data, ticks and labels would need scaling. Maybe
-    %       this will be a feature of a future version.
-    %   - Minor grid and tick values are currently unsupported.
-    %   - Displaying angle units in radians does not format the angles as multiples of pi,
-    %       as opposed to the behavior of POLARAXES. This is unfortunate. 
+    % - The radius-axis lower limit can be changed, but the origin will always be at
+    %   (0,0). Implementing an actual limits-change would be rather difficult (I suppose)
+    %   because the radius data, ticks and labels would need scaling. Maybe this will be a
+    %   feature of a future version.
+    % - Minor grid and tick values are currently unsupported.
+    % - Displaying angle units in radians does not format the angles as multiples of pi,
+    %   as opposed to the behavior of POLARAXES. This is unfortunate. 
     %       
+    %
     %
     % ---Author: Frederick Zittrell
     %
     % See also histogram2 polaraxes colormap set
     
     properties
-        Data double % N-by-2 matrix where the first column is angle data and the second column is radius data. Translates to the same property of HISTOGRAM2 and adjusts the plot if changed.
+        % N-by-2 matrix where the first column contains angle data and the second column contains radius data. Translates to the same property of HISTOGRAM2 and adjusts the plot if changed.
+        Data double
         
-        BinWidth(1,1) double {mustBeNonnegative} = histogram2Polar.defBinWidth  % Edge length of square-sized bins, in radius data.
+        % Positive scalar. Edge length of square-sized bins, in radius data. Adjustable after plotting.
+        BinWidth(1,1) double {mustBeNonnegative} = histogram2Polar.defBinWidth
         
-        Parent(1,1) matlab.graphics.axis.Axes = gca     % Plotting axes
+        % Handle to the AXES where the histogram is plotted.
+        Parent(1,1) matlab.graphics.axis.Axes {histogram2Polar.mustBeValidAx} = gca
         
-        ThetaTicks double = histogram2Polar.defThetaTicks   % Angle-axis tick values (in degrees), same behavior as for POLARAXES.
-        ThetaAxisUnits char {histogram2Polar.mustBeValidUnit} = histogram2Polar.defThetaUnits   % Angle axis units, same behavior as for POLARAXES.
-        ThetaLim double {histogram2Polar.mustBeValidLim} = histogram2Polar.defThetaLim  % Limits of angle axis, same behavior as for POLARAXES.
-        ThetaZeroLocation char {histogram2Polar.mustBeValidLoc} = histogram2Polar.defThetaZeroLoc   % Location of the zero reference axis, same behavior as for POLARAXES.
-        ThetaDir char {histogram2Polar.mustBeValidThetaDir} = histogram2Polar.defThetaDir   % Direction of increasing angles, same behavior as for POLARAXES.
+        % Angle-axis tick values (in degrees), same behavior as for POLARAXES.
+        ThetaTicks double = histogram2Polar.defThetaTicks
         
-        RTicks double = histogram2Polar.defRTicks   % Radius-axis tick values, same behavior as for POLARAXES.
-        RLim double {histogram2Polar.mustBeValidLim} = histogram2Polar.defRLim  % Radius-axis limits, same behavior as for POLARAXES.
-        RAxisLocation(1,1) double {mustBeNumeric} = histogram2Polar.defRAxisLoc % Location of radius-axis tick labels (in degrees), same behavior as for POLARAXES.
+        % 'degrees' | 'radians'. Angle axis units, same behavior as for POLARAXES.
+        ThetaAxisUnits char {histogram2Polar.mustBeValidUnit} = histogram2Polar.defThetaUnits
         
-        GridColor = histogram2Polar.defGridColor    % Color of polar-coordinate grid lines.
-        DisplayGridOnTop double {mustBeNumericOrLogical} = histogram2Polar.defDisplayGridOnTop  % Display polar-coordinate grid on top of histogram or beneath.
-        DisplayColorbar double {mustBeNumericOrLogical} = histogram2Polar.defDisplayColorbar    % Display color bar.
+        % Angle-axis limits (in degrees), same behavior as for POLARAXES.
+        ThetaLim double {histogram2Polar.mustBeValidLim} = histogram2Polar.defThetaLim
+        
+        % 'top' | 'left' | 'right' | 'bottom'. Location of the zero reference axis, same behavior as for POLARAXES.
+        ThetaZeroLocation char {histogram2Polar.mustBeValidLoc} = histogram2Polar.defThetaZeroLoc
+        
+        % 'counterclockwise' | 'clockwise'. Direction of increasing angles, same behavior as for POLARAXES.
+        ThetaDir char {histogram2Polar.mustBeValidThetaDir} = histogram2Polar.defThetaDir
+        
+        % Radius-axis tick values, same behavior as for POLARAXES.
+        RTicks double = histogram2Polar.defRTicks
+        
+        % Radius-axis limits, same behavior as for POLARAXES.
+        RLim double {histogram2Polar.mustBeValidLim} = histogram2Polar.defRLim
+        
+        % Location of radius-axis tick labels (in degrees), same behavior as for POLARAXES.
+        RAxisLocation (1,1) double {mustBeNumeric} = histogram2Polar.defRAxisLoc
+        
+        % Color of polar-coordinate grid lines.
+        GridColor = histogram2Polar.defGridColor
+        
+        % Boolean, controls whether the polar-coordinate grid is displayed on top of the histogram or beneath.
+        DisplayGridOnTop double {mustBeNumericOrLogical} = histogram2Polar.defDisplayGridOnTop
+        
+        % Boolean, controls whether a color bar is displayed.
+        DisplayColorbar double {mustBeNumericOrLogical} = histogram2Polar.defDisplayColorbar
     end
     
     
     properties (SetAccess = private)
         % handles to graphic objects
-        Histogram   % Histogram2 object. Access histogram properties via this handle. See also histogram2
         
-        Colorbar    % Color bar handle. Use this to change color bar properties; only valid if 'DisplayColorbar' is TRUE.
+        % Histogram2 object. Access histogram properties via this handle. See also <a href="matlab: doc histogram2">histogram2</a>
+        Histogram
         
-        GridEdge    % Handle to the grid circle at the plot edge. Shares 'Color' and 'LineWidth' with the other grid lines.
-        RAxisGrid   % Handle to the radius-axis tick-circles. Shares 'Color' and 'LineWidth' with the other grid lines.
-        RAxisLabels % Handle to the radius-axis labels, which are separate TEXT objects and share font properties.
+        % Color bar handle. Use this to change color bar properties; only valid if 'DisplayColorbar' is TRUE.
+        Colorbar
         
-        ThetaAxisGrid   % Handle to the angle-axis grid lines. Shares 'Color' and 'LineWidth' with the other grid lines.
-        ThetaAxisLabels % Handle to the angle-axis labels, which are separate TEXT objects and share font properties.
+        % Handle to the grid circle at the plot edge. Shares 'Color' and 'LineWidth' with the other grid lines.
+        GridEdge
+        
+        % Handle to the radius-axis tick-circles. Shares 'Color' and 'LineWidth' with the other grid lines.
+        RAxisGrid
+        
+        % Handle to the radius-axis labels, which are separate TEXT objects and share font properties.
+        RAxisLabels
+        
+        % Handle to the angle-axis grid lines. Shares 'Color' and 'LineWidth' with the other grid lines.
+        ThetaAxisGrid
+        
+        % Handle to the angle-axis labels, which are separate TEXT objects and share font properties.
+        ThetaAxisLabels
     end
     
     
@@ -173,6 +221,7 @@ classdef histogram2Polar < matlab.mixin.SetGet
     
     properties (Constant, Access = private)
         % default property values and validation functions
+        
         defBinWidth = 0.05
         
         defThetaTicks = -1
@@ -191,6 +240,9 @@ classdef histogram2Polar < matlab.mixin.SetGet
         defRLim = [0 1]
         mustBeValidLim = @(v) validateattributes(v, {'numeric'}, {'increasing', 'numel', 2, 'vector'})
         
+        mustBeValidAx = @(h) assert(isscalar(h) && isa(h, 'matlab.graphics.axis.Axes') && isvalid(h), ...
+            'Target axes must be a valid axes handle.')
+        
         defRAxisLoc = 80
         
         defGridColor = [1 1 1] * 0.5
@@ -206,75 +258,100 @@ classdef histogram2Polar < matlab.mixin.SetGet
     
     methods
         function self = histogram2Polar(theta, rho, BinWidth, varargin)
-            %histogram2Polar Constructor
+            %histogram2Polar Constructor: histogram2Polar(theta, rho, binWidth, Name, Value)
             %
             %   obj = histogram2Polar(theta, rho, binWidth, Name, Value)
             
-            %% input parsing
-            if nargin > 2
-                if isscalar(theta) && isa(theta, 'matlab.graphics.axis.Axes')
-                    self.Parent = theta;
+            %% input parsing           
+            assert(nargin >= 2, 'Not enough input arguments');
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            
+            ip.addRequired('theta', @mustBeNumeric);
+            ip.addRequired('rho', @mustBeNumeric);
+            
+            ip.addOptional('BinWidth', self.defBinWidth);
+            
+            % defining default values here _and_ in the property definition is obviously
+            % redundant. Note that the property-value validation is only defined in the
+            % property definition, while the default values are specified in the defintion
+            % and here in the parser. I like defining the validations in the defintions
+            % because the structure is much cleaner than doing this in the parser and
+            % because the generated error messages when a validation function fails are
+            % very nice. However, to use the parser the way it is intended (automatically
+            % setting specified and default values), the default values need to be given
+            % to the parser as well. Inputs THETA and RHO are different because these are
+            % not assigned property values.
+            ip.addParameter('RTicks', self.defRTicks);
+            ip.addParameter('RLim', self.defRLim);
+            ip.addParameter('RAxisLocation', self.defRAxisLoc);
+            ip.addParameter('ThetaTicks', self.defThetaTicks);
+            ip.addParameter('ThetaLim', self.defThetaLim);
+            ip.addParameter('ThetaZeroLocation', self.defThetaZeroLoc);
+            ip.addParameter('ThetaDir', self.defThetaDir);
+            ip.addParameter('ThetaAxisUnits', self.defThetaUnits);
+            ip.addParameter('GridColor', self.defGridColor);
+            ip.addParameter('DisplayColorbar', self.defDisplayColorbar);
+            ip.addParameter('DisplayGridOnTop', self.defDisplayGridOnTop);
+            ip.addParameter('Parent', gca);
+            
+            if nargin < 3 % easy
+                ip.parse(theta, rho);
+            else % hard: facilitating optional TARGET specification as first argument
+                if isscalar(theta) && isa(theta, 'matlab.graphics.axis.Axes') && isvalid(theta)
+                    % first input is axes -> shift input variable contents to the left and
+                    % use first input as 'Parent' value; note that by appending it to
+                    % VARARGIN, this causes the first argument to have preference over the
+                    % given parameter value if 'Parent' is also specified via Name-Value
+                    % pair input
+                    varargin = [varargin, {'Parent', theta}];
                     theta = rho;
                     rho = BinWidth;
+                    
+                    % now, either there were more arguments specified, then BINWIDTH is
+                    % the first element of VARARGIN -> shift contents
                     if nargin > 3
-                        self.BinWidth = varargin{1};
+                        BinWidth = varargin{1};
                         varargin = varargin(2:end);
+                        
+                    else
+                        % or no additional arguments were given -> manually assign default
+                        % value to BINWIDTH
+                        BinWidth = self.defBinWidth;
                     end
                 end
-            end
-            theta = theta(:);
-            rho = rho(:);
-            self.Data = [theta, rho];
-            
-            if nargin < 3 || isempty(BinWidth)
-                self.BinWidth = self.defBinWidth;
-            else
-                self.BinWidth = BinWidth;
-            end
-            
-            % not sure why this is necessary ...
-            if ~isvalid(self.Parent)
-                self.Parent = gca; end
-            
-            % input parser
-            persistent ip
-            if isempty(ip)
-                ip = inputParser;
-                ip.KeepUnmatched = true;
                 
-                % defining default values here _and_ in the property definition is
-                % obviously redundant. Note that the property-value validation is only
-                % defined in the property definition, while the default values are
-                % specified in the defintion and here in the parser. I like defining the
-                % validations in the defintions because the structure is much cleaner than
-                % doing this in the parser and because the generated error messages when a
-                % validation function fails are very nice. However, to use the parser the
-                % way it is intended (automatically setting specified and default values),
-                % the default values need to be given to the parser as well.
-                ip.addParameter('RTicks', self.defRTicks);
-                ip.addParameter('RLim', self.defRLim);
-                ip.addParameter('RAxisLocation', self.defRAxisLoc);
-                ip.addParameter('ThetaTicks', self.defThetaTicks);
-                ip.addParameter('ThetaLim', self.defThetaLim);
-                ip.addParameter('ThetaZeroLocation', self.defThetaZeroLoc);
-                ip.addParameter('ThetaDir', self.defThetaDir);
-                ip.addParameter('ThetaAxisUnits', self.defThetaUnits);
-                ip.addParameter('GridColor', self.defGridColor);
-                ip.addParameter('DisplayColorbar', self.defDisplayColorbar);
-                ip.addParameter('DisplayGridOnTop', self.defDisplayGridOnTop);
+                % BINWIDTH may also be specified as [] -> assign default value
+                if isempty(BinWidth), BinWidth = self.defBinWidth; end
+                
+                % finally, parse everything; notes regarding BINWIDTH: If it is omitted,
+                % it is assigned the default value by the parser because it is not passed
+                % to it (see above PARSE call). If it is omitted but Name-Value pairs are
+                % given, the below PARSE call still works because then, BINWIDTH is a
+                % parameter name, being recognized by the parser as such, and the parser
+                % returns the default value for BINWIDTH.
+                ip.parse(theta, rho, BinWidth, varargin{:});
             end
             
-            ip.parse(varargin{:});
+            theta = ip.Results.theta(:);
+            rho = ip.Results.rho(:);
+            assert(numel(rho) == numel(theta), ...
+                'Inputs THETA and RHO must have equal numbers of elements.');
+            self.Data = [theta, rho];
+
             
-            % assign parameters to properties
-            for iParam = 1:numel(ip.Parameters)
-                cParam = ip.Parameters{iParam};
+            % assign parameters to properties; exclude THETA and RHO from parser
+            % parameter-list
+            params = setdiff(ip.Parameters, {'theta', 'rho'});
+            for iParam = 1:numel(params)
+                cParam = params{iParam};
                 self.(cParam) = ip.Results.(cParam);
             end
             
-            % pass unmatched input to HISTOGRAM2: Create cell matrix with parameter names
-            % and values that were not matched by the parser, then transform the matrix to
-            % reconstruct the name-value pairs
+            % pass unmatched input to HISTOGRAM2: Create cell matrix with input that could
+            % not be matched by the parser, then transform the matrix to reconstruct the
+            % name-value pairs
             hist2Args = [fieldnames(ip.Unmatched)'; struct2cell(ip.Unmatched)'];
             hist2Args = hist2Args(:)';
             
@@ -287,7 +364,7 @@ classdef histogram2Polar < matlab.mixin.SetGet
                 self.RTicks = linspace(self.RLim(1), self.RLim(2), 5);
             end
             
-            if isscalar(self.ThetaTicks) && self.ThetaTicks < 0
+            if isscalar(self.ThetaTicks) && self.ThetaTicks == -1
                 self.ThetaTicks = linspace(self.ThetaLim(1), self.ThetaLim(2), 5);
             end
             
@@ -303,11 +380,7 @@ classdef histogram2Polar < matlab.mixin.SetGet
             % coordinate transformation
             [x, y] = pol2cart(theta * self.thDirFac, rho);
             
-            % compose histogram edges; this procedure assures that the bins are symmetric
-            % relative to the plot center, i. e., the innermost four bins meet at (0,0)
-            edgesPos = 0 : self.BinWidth : self.RLim(2);
-            edgesNeg = -1 * edgesPos(end:-1:2);
-            edges = [edgesNeg, edgesPos];
+            edges = self.getEdges;
             
             try
                 self.Histogram = histogram2(axH, x, y, edges, edges, ...
@@ -318,6 +391,7 @@ classdef histogram2Polar < matlab.mixin.SetGet
                     % handle exception of non-matching parameter name
                     
                     validParams = ip.Parameters; % compose parameter names
+                    validParams = setdiff(validParams, {'theta', 'rho'});
                     validParams = cellfun(@(c) ['''',c,''''], validParams, 'UniformOutput', false);
                     exMsg = sprintf('Unrecognized Name-Value pair input\nValid parameters for %s:\n\n%s\n', ...
                         '<a href="matlab: matlab.internal.language.introspective.errorDocCallback(''histogram2Polar'')">histogram2Polar</a>', ...
@@ -375,7 +449,7 @@ classdef histogram2Polar < matlab.mixin.SetGet
         function set.ThetaTicks(self, tt)
             %ThetaTicks
             self.ThetaTicks = tt;
-            if ~(isscalar(self.ThetaTicks) && self.ThetaTicks < 0)
+            if ~(isscalar(self.ThetaTicks) && self.ThetaTicks == -1)
                 self.drawThetaTicks;
                 self.drawThetaLabels;
             end
@@ -385,11 +459,14 @@ classdef histogram2Polar < matlab.mixin.SetGet
         function set.ThetaLim(self, lim)
             %ThetaLim Only affects the grid and ticks. To exclude data points, change
             %'Data' directly.
+            
             self.ThetaLim = lim;
             
-            % -1 case occurs during construction
+            % -1 case occurs during construction with default THETATICK value. I'm
+            % terribly sorry if you really want to have a single tick at -1 -- consider
+            % specifying the tick value as 359.
             if ~isempty(self.ThetaTicks) && ~(isscalar(self.ThetaTicks) && self.ThetaTicks ~= -1)
-                % adjust ticks
+                % adjust ticks: remove ticks outside limits
                 oldTicks = mod(self.ThetaTicks, 360);
                 ticks = oldTicks(oldTicks >= lim(1) & oldTicks <= lim(2));
                 
@@ -416,7 +493,7 @@ classdef histogram2Polar < matlab.mixin.SetGet
                 self.BinWidth = bw;
                 
                 if ~isempty(self.Histogram) && isvalid(self.Histogram)
-                    edges = -self.RLim(2) : bw : self.RLim(2);
+                    edges = self.getEdges;
                     set(self.Histogram, 'XBinEdges', edges, 'YBinEdges', edges);
                 end
             end
@@ -549,11 +626,22 @@ classdef histogram2Polar < matlab.mixin.SetGet
     end % public
     %%
     methods (Access = private)
+        function edges = getEdges(self)
+            %getEdges Compose histogram edges; this procedure assures that the bins are
+            %symmetricrelative to the plot center, i. e., the innermost four bins meet at
+            %(0,0).
+            
+            edgesPos = 0 : self.BinWidth : self.RLim(2);
+            edgesNeg = -1 * edgesPos(end:-1:2);
+            edges = [edgesNeg, edgesPos];
+        end
+        
         function ticksRad = uniqueThetaTicksRad(self)
             %uniqueThetaTicksRad Returns the unique tick marks in radians. Useful because
             %'ThetaLim' may contain the same circular value.
             ticksRad = deg2rad(sort(unique(mod(self.ThetaTicks, 360)), 'ascend'));
         end
+        
         
         function drawThetaTicks(self)
             %drawThetaTicks
