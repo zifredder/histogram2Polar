@@ -3,7 +3,7 @@
 
 ![](exampleHistogram2Polar.png )
 
-Esentially, the coordinates are converted to cartesian coordinates and fed to
+Essentially, the coordinates are converted to Cartesian coordinates and fed to
 MATLAB's `histogram2`. A polar-coordinate grid is then drawn in order to mimic a polar plot.
 The properties and methods of this class are intended to mimic a polar plot like it
 is created by `polaraxes` and properties with the same name, such as `'ThetaDir'`, mimic
